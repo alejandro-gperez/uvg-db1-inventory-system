@@ -21,6 +21,7 @@ func main() {
 	}
 
 	http.HandleFunc("/productos", handlers.GetProductos(conn))
+	http.HandleFunc("/productos/create", handlers.CreateProducto(conn))
 
 	log.Println("Servidor corriendo en http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
