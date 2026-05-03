@@ -112,6 +112,7 @@ proyecto_2/
 ├── db/               # SQL schema, constraints, and seed scripts
 ├── docker-compose.yml# Infrastructure orchestration
 └── README.md         # Project documentation
+```
 
 ## Dabase Design (DDL)
 
