@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Users, Search, Mail, User } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Plus, Users } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,14 +16,17 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { clientes as initialClientes, type Cliente } from "@/lib/data"
+
+import { useRouter } from "next/navigation"
+
+type Cliente = {
+  id: number
+  nombre: string
+  correo: string
+}
 
 const avatarColors = [
   "bg-blue-500/15 text-blue-400 ring-blue-500/30",
@@ -34,7 +37,10 @@ const avatarColors = [
 ]
 
 export default function ClientesPage() {
-  const [clientes, setClientes] = useState<Cliente[]>(initialClientes)
+  const router = useRouter() // ✅ AQUÍ VA
+
+  const [clientes, setClientes] = useState<Cliente[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [isOpen, setIsOpen] = useState(false)
   const [newCliente, setNewCliente] = useState({
@@ -42,22 +48,45 @@ export default function ClientesPage() {
     correo: "",
   })
 
+  useEffect(() => {
+    fetch("http://localhost:8080/clientes")
+      .then(res => res.json())
+      .then(data => {
+        setClientes(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [])
+
   const filteredClientes = clientes.filter(
     (c) =>
       c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.correo.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleAddCliente = () => {
-    if (newCliente.nombre && newCliente.correo) {
-      const cliente: Cliente = {
-        id: String(clientes.length + 1),
-        nombre: newCliente.nombre,
-        correo: newCliente.correo,
-      }
-      setClientes([...clientes, cliente])
+  const handleAddCliente = async () => {
+    if (!newCliente.nombre || !newCliente.correo) return
+
+    try {
+      const res = await fetch("http://localhost:8080/clientes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newCliente),
+      })
+
+      const data = await res.json()
+
+      setClientes([...clientes, data])
       setNewCliente({ nombre: "", correo: "" })
       setIsOpen(false)
+
+    } catch (err) {
+      console.error(err)
     }
   }
 
@@ -65,147 +94,86 @@ export default function ClientesPage() {
     return avatarColors[index % avatarColors.length]
   }
 
+  if (loading) return <p className="p-6">Cargando clientes...</p>
+
   return (
-    <DashboardLayout
-      title="Clientes"
-      description="Administra la información de tus clientes"
-    >
+    <DashboardLayout title="Clientes" description="Administra clientes">
       <div className="space-y-8">
-        {/* Actions Bar */}
-        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
-            <Input
-              placeholder="Buscar por nombre o correo..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="h-11 bg-card/50 pl-11 text-sm transition-all duration-200 focus:bg-card focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
+
+        <div className="flex justify-between gap-4">
+          <Input
+            placeholder="Buscar..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+
           <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-              <Button className="h-11 gap-2.5 px-5 shadow-lg shadow-primary/20 transition-all duration-300 hover:shadow-primary/30 hover:scale-[1.02] active:scale-[0.98]">
-                <Plus className="h-4 w-4" />
-                Nuevo Cliente
+              <Button className="flex gap-2">
+                <Plus size={16} /> Nuevo
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader className="space-y-2.5">
-                <DialogTitle className="text-xl">Nuevo Cliente</DialogTitle>
-                <DialogDescription>
-                  Agrega un nuevo cliente a tu base de datos
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-5 py-6">
-                <div className="grid gap-2.5">
-                  <Label htmlFor="nombre" className="text-sm font-medium">Nombre Completo</Label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
-                    <Input
-                      id="nombre"
-                      value={newCliente.nombre}
-                      onChange={(e) =>
-                        setNewCliente({ ...newCliente, nombre: e.target.value })
-                      }
-                      placeholder="Juan Pérez"
-                      className="h-11 pl-11"
-                    />
-                  </div>
-                </div>
-                <div className="grid gap-2.5">
-                  <Label htmlFor="correo" className="text-sm font-medium">Correo Electrónico</Label>
-                  <div className="relative">
-                    <Mail className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/60" />
-                    <Input
-                      id="correo"
-                      type="email"
-                      value={newCliente.correo}
-                      onChange={(e) =>
-                        setNewCliente({ ...newCliente, correo: e.target.value })
-                      }
-                      placeholder="juan@ejemplo.com"
-                      className="h-11 pl-11"
-                    />
-                  </div>
-                </div>
-              </div>
-              <DialogFooter className="gap-3 sm:gap-3">
-                <Button variant="outline" onClick={() => setIsOpen(false)} className="h-10">
-                  Cancelar
-                </Button>
-                <Button onClick={handleAddCliente} className="h-10 px-6">
-                  Guardar Cliente
-                </Button>
-              </DialogFooter>
+
+            <DialogContent>
+              <DialogTitle>Nuevo Cliente</DialogTitle>
+
+              <Input
+                value={newCliente.nombre}
+                onChange={(e) =>
+                  setNewCliente({ ...newCliente, nombre: e.target.value })
+                }
+                placeholder="Nombre"
+              />
+
+              <Input
+                value={newCliente.correo}
+                onChange={(e) =>
+                  setNewCliente({ ...newCliente, correo: e.target.value })
+                }
+                placeholder="Correo"
+              />
+
+              <Button onClick={handleAddCliente}>
+                Guardar
+              </Button>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Table Card */}
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-border/60 hover:bg-transparent">
-                <TableHead className="w-14 py-4 pl-6"></TableHead>
-                <TableHead className="py-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Nombre</TableHead>
-                <TableHead className="py-4 pr-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">Correo Electrónico</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredClientes.map((cliente, index) => (
-                <TableRow
-                  key={cliente.id}
-                  className="group cursor-pointer border-border/40 transition-all duration-200 hover:bg-muted/30"
-                >
-                  <TableCell className="py-4 pl-6">
-                    <div className={`flex h-11 w-11 items-center justify-center rounded-full ring-1 transition-all duration-300 group-hover:scale-105 ${getAvatarColor(index)}`}>
-                      <span className="text-sm font-semibold">
-                        {cliente.nombre
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                          .slice(0, 2)}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="py-4">
-                    <span className="font-medium text-foreground/90">{cliente.nombre}</span>
-                  </TableCell>
-                  <TableCell className="py-4 pr-6">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5 text-muted-foreground/50" />
-                      <span className="text-sm">{cliente.correo}</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          
-          {/* Empty State */}
-          {filteredClientes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="rounded-2xl bg-muted/30 p-5">
-                <Users className="h-10 w-10 text-muted-foreground/40" />
-              </div>
-              <p className="mt-5 text-sm font-medium text-muted-foreground">
-                No se encontraron clientes
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                Intenta con otros términos de búsqueda
-              </p>
-            </div>
-          )}
-        </div>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead></TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Correo</TableHead>
+            </TableRow>
+          </TableHeader>
 
-        {/* Stats Footer */}
-        <div className="flex items-center justify-between rounded-xl bg-muted/20 px-6 py-4">
-          <p className="text-sm text-muted-foreground">
-            Mostrando <span className="font-medium text-foreground">{filteredClientes.length}</span> de{" "}
-            <span className="font-medium text-foreground">{clientes.length}</span> clientes
-          </p>
-        </div>
+          <TableBody>
+            {filteredClientes.map((cliente, index) => (
+              <TableRow
+                key={cliente.id}
+                onClick={() => router.push(`/clientes/${cliente.id}`)}
+                className="cursor-pointer hover:bg-muted/30"
+              >
+                <TableCell>
+                  <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getAvatarColor(index)}`}>
+                    {cliente.nombre[0]}
+                  </div>
+                </TableCell>
+
+                <TableCell>{cliente.nombre}</TableCell>
+                <TableCell>{cliente.correo}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        {filteredClientes.length === 0 && (
+          <div className="text-center py-10 text-muted-foreground">
+            No hay clientes
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )

@@ -9,6 +9,20 @@ import (
 	"proyecto_2/backend/handlers"
 )
 
+func enableCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == "OPTIONS" {
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 
 	os.Setenv("POSTGRES_USER", "proy2")
@@ -98,5 +112,8 @@ func main() {
 	})
 
 	log.Println("Servidor corriendo en http://localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+
+	// 👇 AQUÍ ESTÁ EL CAMBIO IMPORTANTE
+	handler := enableCORS(http.DefaultServeMux)
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }
