@@ -97,3 +97,15 @@ CREATE TABLE Detalle_Venta (
     FOREIGN KEY (id_venta) REFERENCES Venta(id_venta),
     FOREIGN KEY (id_producto) REFERENCES Producto(id_producto)
 );
+
+CREATE VIEW vista_ventas AS
+SELECT 
+    v.id_venta,
+    v.fecha,
+    c.nombre AS cliente,
+    e.nombre AS empleado,
+    m.nombre AS metodo_pago
+FROM Venta v
+JOIN Cliente c ON v.id_cliente = c.id_cliente
+JOIN Empleado e ON v.id_empleado = e.id_empleado
+JOIN Metodo_Pago m ON v.id_metodo_pago = m.id_metodo_pago;
