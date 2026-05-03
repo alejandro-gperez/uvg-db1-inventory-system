@@ -45,6 +45,7 @@ CREATE TABLE Producto (
     id_categoria INT NOT NULL,
     id_proveedor INT NOT NULL,
     id_marca INT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
     
     FOREIGN KEY (id_categoria) REFERENCES Categoria(id_categoria),
     FOREIGN KEY (id_proveedor) REFERENCES Proveedor(id_proveedor),

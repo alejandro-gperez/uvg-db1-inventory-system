@@ -20,8 +20,25 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/productos", handlers.GetProductos(conn))
-	http.HandleFunc("/productos/create", handlers.CreateProducto(conn))
+	http.HandleFunc("/productos", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			handlers.GetProductos(conn)(w, r)
+		case http.MethodPost:
+			handlers.CreateProducto(conn)(w, r)
+		default:
+			http.Error(w, "Método no permitido", 405)
+		}
+	})
+
+	http.HandleFunc("/productos/", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodDelete:
+			handlers.DeleteProducto(conn)(w, r)
+		default:
+			http.Error(w, "Método no permitido", 405)
+		}
+	})
 
 	log.Println("Servidor corriendo en http://localhost:8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
