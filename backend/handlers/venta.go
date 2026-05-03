@@ -358,3 +358,39 @@ func GetVentasView(db *sql.DB) http.HandlerFunc {
 		json.NewEncoder(w).Encode(ventas)
 	}
 }
+
+func VentasAltas(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		rows, err := db.Query(`
+			SELECT id_venta
+			FROM Venta
+			WHERE id_venta IN (
+				SELECT id_venta
+				FROM Detalle_Venta
+				GROUP BY id_venta
+				HAVING SUM(cantidad * precio_unitario) > 50
+			)
+		`)
+
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer rows.Close()
+
+		type Venta struct {
+			ID int `json:"id_venta"`
+		}
+
+		result := []Venta{}
+
+		for rows.Next() {
+			var v Venta
+			rows.Scan(&v.ID)
+			result = append(result, v)
+		}
+
+		json.NewEncoder(w).Encode(result)
+	}
+}

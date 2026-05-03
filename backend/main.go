@@ -20,7 +20,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// ===== HANDLERS PRODUCTO / VENTA =====
+	// ===== HANDLERS PRODUCTO =====
+
 	http.HandleFunc("/productos", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -41,6 +42,8 @@ func main() {
 		}
 	})
 
+	// ===== HANDLERS VENTA =====
+
 	http.HandleFunc("/ventas", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -60,10 +63,17 @@ func main() {
 		http.Error(w, "Método no permitido", 405)
 	})
 
+	// ===== HANDLERS REPORTES =====
+
 	http.HandleFunc("/reportes/ventas", handlers.ReporteVentas(conn))
 	http.HandleFunc("/reportes/top-productos", handlers.TopProductos(conn))
 	http.HandleFunc("/reportes/cte", handlers.ReporteCTE(conn))
+	http.HandleFunc("/reportes/productos-vendidos", handlers.ProductosVendidos(conn))
+	http.HandleFunc("/reportes/ventas-altas", handlers.VentasAltas(conn))
+
 	http.HandleFunc("/ventas-view", handlers.GetVentasView(conn))
+
+	// ===== HANDLERS CLIENTE =====
 
 	http.HandleFunc("/clientes", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
@@ -76,7 +86,6 @@ func main() {
 		}
 	})
 
-	// ===== HANDLERS CLIENTE =====
 	http.HandleFunc("/clientes/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPut:

@@ -157,3 +157,36 @@ func DeleteProducto(db *sql.DB) http.HandlerFunc {
 		})
 	}
 }
+
+func ProductosVendidos(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		rows, err := db.Query(`
+			SELECT nombre
+			FROM Producto
+			WHERE id_producto IN (
+				SELECT id_producto FROM Detalle_Venta
+			)
+		`)
+
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		defer rows.Close()
+
+		type Producto struct {
+			Nombre string `json:"nombre"`
+		}
+
+		result := []Producto{}
+
+		for rows.Next() {
+			var p Producto
+			rows.Scan(&p.Nombre)
+			result = append(result, p)
+		}
+
+		json.NewEncoder(w).Encode(result)
+	}
+}
