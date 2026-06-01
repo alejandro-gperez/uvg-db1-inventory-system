@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"proyecto_2/backend/db"
 	"proyecto_2/backend/handlers"
@@ -11,7 +12,12 @@ import (
 
 func enableCORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		allowedOrigin := os.Getenv("CORS_ALLOWED_ORIGIN")
+		if allowedOrigin == "" {
+			allowedOrigin = "http://localhost:3000"
+		}
+
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
@@ -24,11 +30,6 @@ func enableCORS(next http.Handler) http.Handler {
 }
 
 func main() {
-
-	os.Setenv("POSTGRES_USER", "proy2")
-	os.Setenv("POSTGRES_PASSWORD", "secret")
-	os.Setenv("POSTGRES_DB", "tienda")
-
 	conn, err := db.Connect()
 	if err != nil {
 		log.Fatal(err)
@@ -49,6 +50,8 @@ func main() {
 
 	http.HandleFunc("/productos/", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
+		case http.MethodPut:
+			handlers.UpdateProducto(conn)(w, r)
 		case http.MethodDelete:
 			handlers.DeleteProducto(conn)(w, r)
 		default:
@@ -70,6 +73,10 @@ func main() {
 	})
 
 	http.HandleFunc("/ventas/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/cancelar") {
+			handlers.CancelVenta(conn)(w, r)
+			return
+		}
 		if r.Method == http.MethodGet {
 			handlers.GetVentaDetalle(conn)(w, r)
 			return
@@ -84,8 +91,27 @@ func main() {
 	http.HandleFunc("/reportes/cte", handlers.ReporteCTE(conn))
 	http.HandleFunc("/reportes/productos-vendidos", handlers.ProductosVendidos(conn))
 	http.HandleFunc("/reportes/ventas-altas", handlers.VentasAltas(conn))
+	http.HandleFunc("/reportes/resumen", handlers.ResumenVentasPeriodo(conn))
 
 	http.HandleFunc("/ventas-view", handlers.GetVentasView(conn))
+
+	// ===== HANDLERS INVENTARIO / STORED PROCEDURES =====
+
+	http.HandleFunc("/inventario/ajuste", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			handlers.AjustarInventario(conn)(w, r)
+			return
+		}
+		http.Error(w, "Método no permitido", 405)
+	})
+
+	http.HandleFunc("/inventario/ingreso", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			handlers.IngresarInventario(conn)(w, r)
+			return
+		}
+		http.Error(w, "Método no permitido", 405)
+	})
 
 	// ===== HANDLERS CLIENTE =====
 
@@ -113,7 +139,6 @@ func main() {
 
 	log.Println("Servidor corriendo en http://localhost:8080")
 
-	// 👇 AQUÍ ESTÁ EL CAMBIO IMPORTANTE
 	handler := enableCORS(http.DefaultServeMux)
 	log.Fatal(http.ListenAndServe(":8080", handler))
 }

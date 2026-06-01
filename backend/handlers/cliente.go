@@ -1,44 +1,21 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
+
+	"proyecto_2/backend/models"
+
+	"gorm.io/gorm"
 )
 
-type Cliente struct {
-	ID     int    `json:"id"`
-	Nombre string `json:"nombre"`
-	Correo string `json:"correo"`
-}
-
-func GetClientes(db *sql.DB) http.HandlerFunc {
+func GetClientes(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		clientes := []models.Cliente{}
 
-		rows, err := db.Query(`
-			SELECT id_cliente, nombre, correo
-			FROM Cliente
-			ORDER BY id_cliente
-		`)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-		defer rows.Close()
-
-		clientes := []Cliente{}
-
-		for rows.Next() {
-			var c Cliente
-			if err := rows.Scan(&c.ID, &c.Nombre, &c.Correo); err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-			clientes = append(clientes, c)
-		}
-
-		if err = rows.Err(); err != nil {
-			http.Error(w, err.Error(), 500)
+		if err := db.Order("id_cliente").Find(&clientes).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -47,86 +24,90 @@ func GetClientes(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateCliente(db *sql.DB) http.HandlerFunc {
+func CreateCliente(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		var c Cliente
-		if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-			http.Error(w, err.Error(), 400)
+		var cliente models.Cliente
+		if err := json.NewDecoder(r.Body).Decode(&cliente); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if c.Nombre == "" {
-			http.Error(w, "nombre es requerido", 400)
+		if cliente.Nombre == "" {
+			http.Error(w, "nombre es requerido", http.StatusBadRequest)
 			return
 		}
 
-		err := db.QueryRow(`
-			INSERT INTO Cliente (nombre, correo)
-			VALUES ($1, $2)
-			RETURNING id_cliente
-		`, c.Nombre, c.Correo).Scan(&c.ID)
-
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		cliente.ID = 0
+		if err := db.Create(&cliente).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(c)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(cliente)
 	}
 }
 
-func UpdateCliente(db *sql.DB) http.HandlerFunc {
+func UpdateCliente(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		id := r.URL.Path[len("/clientes/"):]
-		if id == "" {
-			http.Error(w, "id requerido", 400)
+		id, err := strconv.Atoi(r.URL.Path[len("/clientes/"):])
+		if err != nil || id <= 0 {
+			http.Error(w, "id de cliente invalido", http.StatusBadRequest)
 			return
 		}
 
-		var c Cliente
-		if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
-			http.Error(w, err.Error(), 400)
+		var input models.Cliente
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		_, err := db.Exec(`
-			UPDATE Cliente
-			SET nombre = $1, correo = $2
-			WHERE id_cliente = $3
-		`, c.Nombre, c.Correo, id)
-
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		result := db.Model(&models.Cliente{}).
+			Where("id_cliente = ?", id).
+			Updates(map[string]interface{}{
+				"nombre": input.Nombre,
+				"correo": input.Correo,
+			})
+		if result.Error != nil {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			return
+		}
+		if result.RowsAffected == 0 {
+			http.Error(w, "cliente no encontrado", http.StatusNotFound)
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]string{
-			"message": "Cliente actualizado",
-		})
+		var cliente models.Cliente
+		if err := db.First(&cliente, "id_cliente = ?", id).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(cliente)
 	}
 }
 
-func DeleteCliente(db *sql.DB) http.HandlerFunc {
+func DeleteCliente(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		id := r.URL.Path[len("/clientes/"):]
-		if id == "" {
-			http.Error(w, "id requerido", 400)
+		id, err := strconv.Atoi(r.URL.Path[len("/clientes/"):])
+		if err != nil || id <= 0 {
+			http.Error(w, "id de cliente invalido", http.StatusBadRequest)
 			return
 		}
 
-		_, err := db.Exec(`
-			DELETE FROM Cliente WHERE id_cliente = $1
-		`, id)
-
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		result := db.Delete(&models.Cliente{}, "id_cliente = ?", id)
+		if result.Error != nil {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			return
+		}
+		if result.RowsAffected == 0 {
+			http.Error(w, "cliente no encontrado", http.StatusNotFound)
 			return
 		}
 
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{
 			"message": "Cliente eliminado",
 		})

@@ -1,52 +1,23 @@
 package handlers
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
+
+	"proyecto_2/backend/models"
+
+	"gorm.io/gorm"
 )
 
-type Producto struct {
-	ID          int     `json:"id"`
-	Nombre      string  `json:"nombre"`
-	Precio      float64 `json:"precio"`
-	CategoriaID int     `json:"id_categoria"`
-	ProveedorID int     `json:"id_proveedor"`
-	MarcaID     int     `json:"id_marca"`
-}
-
-func GetProductos(db *sql.DB) http.HandlerFunc {
+func GetProductos(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query(`
-			SELECT id_producto, nombre, precio, id_categoria, id_proveedor, id_marca FROM Producto WHERE activo = TRUE`)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
-			return
-		}
-		defer rows.Close()
+		productos := []models.Producto{}
 
-		productos := []Producto{}
-
-		for rows.Next() {
-			var p Producto
-			err := rows.Scan(
-				&p.ID,
-				&p.Nombre,
-				&p.Precio,
-				&p.CategoriaID,
-				&p.ProveedorID,
-				&p.MarcaID,
-			)
-			if err != nil {
-				http.Error(w, err.Error(), 500)
-				return
-			}
-
-			productos = append(productos, p)
-		}
-
-		if err = rows.Err(); err != nil {
-			http.Error(w, err.Error(), 500)
+		if err := db.Where("activo = ?", true).
+			Order("id_producto").
+			Find(&productos).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -55,99 +26,95 @@ func GetProductos(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func CreateProducto(db *sql.DB) http.HandlerFunc {
+func CreateProducto(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var p Producto
-
-		err := json.NewDecoder(r.Body).Decode(&p)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
+		var producto models.Producto
+		if err := json.NewDecoder(r.Body).Decode(&producto); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		query := `
-			INSERT INTO Producto (nombre, precio, id_categoria, id_proveedor, id_marca)
-			VALUES ($1, $2, $3, $4, $5)
-			RETURNING id_producto
-		`
+		if producto.Nombre == "" || producto.Precio <= 0 || producto.CategoriaID == 0 || producto.ProveedorID == 0 {
+			http.Error(w, "nombre, precio, id_categoria e id_proveedor son requeridos", http.StatusBadRequest)
+			return
+		}
 
-		err = db.QueryRow(
-			query,
-			p.Nombre,
-			p.Precio,
-			p.CategoriaID,
-			p.ProveedorID,
-			p.MarcaID,
-		).Scan(&p.ID)
+		producto.ID = 0
+		producto.Activo = true
 
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		if err := db.Create(&producto).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(p)
+		w.WriteHeader(http.StatusCreated)
+		json.NewEncoder(w).Encode(producto)
 	}
 }
 
-func UpdateProducto(db *sql.DB) http.HandlerFunc {
+func UpdateProducto(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.URL.Query().Get("id")
-
-		var p Producto
-		err := json.NewDecoder(r.Body).Decode(&p)
-		if err != nil {
-			http.Error(w, err.Error(), 400)
+		id, err := strconv.Atoi(r.URL.Path[len("/productos/"):])
+		if err != nil || id <= 0 {
+			http.Error(w, "id de producto invalido", http.StatusBadRequest)
 			return
 		}
 
-		query := `
-			UPDATE Producto
-			SET nombre = $1,
-			    precio = $2,
-			    id_categoria = $3,
-			    id_proveedor = $4,
-			    id_marca = $5
-			WHERE id_producto = $6
-		`
-
-		_, err = db.Exec(
-			query,
-			p.Nombre,
-			p.Precio,
-			p.CategoriaID,
-			p.ProveedorID,
-			p.MarcaID,
-			id,
-		)
-
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		var input models.Producto
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		w.Write([]byte("Producto actualizado"))
+		updates := map[string]interface{}{
+			"nombre":       input.Nombre,
+			"precio":       input.Precio,
+			"id_categoria": input.CategoriaID,
+			"id_proveedor": input.ProveedorID,
+			"id_marca":     input.MarcaID,
+		}
+
+		result := db.Model(&models.Producto{}).
+			Where("id_producto = ?", id).
+			Updates(updates)
+		if result.Error != nil {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			return
+		}
+		if result.RowsAffected == 0 {
+			http.Error(w, "producto no encontrado", http.StatusNotFound)
+			return
+		}
+
+		var producto models.Producto
+		if err := db.First(&producto, "id_producto = ?", id).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(producto)
 	}
 }
 
-func DeleteProducto(db *sql.DB) http.HandlerFunc {
+func DeleteProducto(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id := r.URL.Path[len("/productos/"):]
-
-		if id == "" {
-			http.Error(w, "id es requerido", 400)
+		id, err := strconv.Atoi(r.URL.Path[len("/productos/"):])
+		if err != nil || id <= 0 {
+			http.Error(w, "id de producto invalido", http.StatusBadRequest)
 			return
 		}
 
-		query := `
-			UPDATE Producto
-			SET activo = FALSE
-			WHERE id_producto = $1
-		`
-
-		_, err := db.Exec(query, id)
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		result := db.Model(&models.Producto{}).
+			Where("id_producto = ?", id).
+			Update("activo", false)
+		if result.Error != nil {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			return
+		}
+		if result.RowsAffected == 0 {
+			http.Error(w, "producto no encontrado", http.StatusNotFound)
 			return
 		}
 
@@ -158,35 +125,25 @@ func DeleteProducto(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-func ProductosVendidos(db *sql.DB) http.HandlerFunc {
+func ProductosVendidos(db *gorm.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		type ProductoVendido struct {
+			Nombre string `json:"nombre"`
+		}
 
-		rows, err := db.Query(`
+		result := []ProductoVendido{}
+		if err := db.Raw(`
 			SELECT nombre
 			FROM Producto
 			WHERE id_producto IN (
 				SELECT id_producto FROM Detalle_Venta
 			)
-		`)
-
-		if err != nil {
-			http.Error(w, err.Error(), 500)
+		`).Scan(&result).Error; err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer rows.Close()
 
-		type Producto struct {
-			Nombre string `json:"nombre"`
-		}
-
-		result := []Producto{}
-
-		for rows.Next() {
-			var p Producto
-			rows.Scan(&p.Nombre)
-			result = append(result, p)
-		}
-
+		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(result)
 	}
 }
