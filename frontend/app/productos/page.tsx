@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Plus, Package, Search } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -69,7 +70,7 @@ export default function ProductosPage() {
   useEffect(() => {
     setLoading(true)
 
-    fetch("http://localhost:8080/productos")
+    apiFetch("/productos")
       .then(res => res.json())
       .then(data => setProductos(data))
       .catch(err => console.error(err))
@@ -83,16 +84,19 @@ export default function ProductosPage() {
       String(p.id_categoria).includes(searchTerm)
   )
 
-  const handleAddProduct = () => {
-    if (newProduct.nombre && newProduct.precio && newProduct.categoria) {
-      const product: Producto = {
-        id: productos.length + 1,
-        nombre: newProduct.nombre,
-        precio: parseFloat(newProduct.precio),
-        id_categoria: 1,
-        id_proveedor: 1,
-        id_marca: 1,
-      }
+  const handleAddProduct = async () => {
+    if (newProduct.nombre && newProduct.precio) {
+      const res = await apiFetch("/productos", {
+        method: "POST",
+        body: JSON.stringify({
+          nombre: newProduct.nombre,
+          precio: parseFloat(newProduct.precio),
+          id_categoria: 1,
+          id_proveedor: 1,
+          id_marca: 1,
+        }),
+      })
+      const product = await res.json()
       setProductos([...productos, product])
       setNewProduct({ nombre: "", precio: "", categoria: "" })
       setIsOpen(false)
@@ -105,6 +109,7 @@ export default function ProductosPage() {
     <DashboardLayout
       title="Productos"
       description="Gestiona el inventario de productos"
+      allowedRoles={["administrador", "bodeguero"]}
     >
       <div className="space-y-8">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Plus, ShoppingCart, Trash2 } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -63,9 +64,9 @@ export default function VentasPage() {
     setLoading(true)
 
     Promise.all([
-      fetch("http://localhost:8080/clientes").then(r => r.json()),
-      fetch("http://localhost:8080/productos").then(r => r.json()),
-      fetch("http://localhost:8080/reportes/ventas").then(r => r.json()),
+      apiFetch("/clientes").then(r => r.json()),
+      apiFetch("/productos").then(r => r.json()),
+      apiFetch("/reportes/ventas").then(r => r.json()),
     ])
       .then(([clientesData, productosData, ventasData]) => {
         setClientes(clientesData)
@@ -139,7 +140,7 @@ export default function VentasPage() {
       })),
     }
 
-    await fetch("http://localhost:8080/ventas", {
+    await apiFetch("/ventas", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -148,7 +149,7 @@ export default function VentasPage() {
     })
 
     // 🔥 refrescar ventas correctamente
-    const nuevasVentas = await fetch("http://localhost:8080/reportes/ventas")
+    const nuevasVentas = await apiFetch("/reportes/ventas")
       .then(res => res.json())
 
     setVentas(nuevasVentas)
@@ -160,7 +161,7 @@ export default function VentasPage() {
   if (loading) return <p className="p-6">Cargando ventas...</p>
 
   return (
-    <DashboardLayout title="Ventas" description="Gestión de ventas">
+    <DashboardLayout title="Ventas" description="Gestión de ventas" allowedRoles={["administrador", "empleado"]}>
       <div className="grid gap-8 lg:grid-cols-2">
 
         {/* NUEVA VENTA */}

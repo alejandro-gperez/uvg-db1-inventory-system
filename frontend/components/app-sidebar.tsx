@@ -9,19 +9,37 @@ import {
   BarChart3,
   Info,
   Store,
+  LogOut,
+  ClipboardCheck,
+  Boxes,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { defaultPathForRole, roleCanAccess, useAuth, type Role } from "@/lib/auth"
+import { Button } from "@/components/ui/button"
+import { useRouter } from "next/navigation"
 
 const navigation = [
-  { name: "Productos", href: "/productos", icon: Package },
-  { name: "Ventas", href: "/ventas", icon: ShoppingCart },
-  { name: "Clientes", href: "/clientes", icon: Users },
-  { name: "Reportes", href: "/reportes", icon: BarChart3 },
-  { name: "About", href: "/about", icon: Info },
+  { name: "Productos", href: "/productos", icon: Package, roles: ["administrador", "bodeguero"] as Role[] },
+  { name: "Inventario", href: "/inventario", icon: Boxes, roles: ["administrador", "bodeguero"] as Role[] },
+  { name: "Ventas", href: "/ventas", icon: ShoppingCart, roles: ["administrador", "empleado"] as Role[] },
+  { name: "Clientes", href: "/clientes", icon: Users, roles: ["administrador", "empleado"] as Role[] },
+  { name: "Reportes", href: "/reportes", icon: BarChart3, roles: ["administrador", "gerente"] as Role[] },
+  { name: "Auditoría", href: "/auditoria", icon: ClipboardCheck, roles: ["administrador", "auditor_externo"] as Role[] },
+  { name: "About", href: "/about", icon: Info, roles: ["administrador"] as Role[] },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuth()
+  const visibleNavigation = user
+    ? navigation.filter((item) => roleCanAccess(user.rol, item.roles))
+    : []
+
+  const handleLogout = async () => {
+    await logout()
+    router.replace("/login")
+  }
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-72 border-r border-sidebar-border/60 bg-sidebar">
@@ -45,7 +63,7 @@ export function AppSidebar() {
             Menu Principal
           </p>
           <div className="space-y-1.5">
-            {navigation.map((item) => {
+            {visibleNavigation.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
               return (
                 <Link
@@ -78,13 +96,16 @@ export function AppSidebar() {
 
         {/* Footer */}
         <div className="border-t border-sidebar-border/60 p-5">
-          <div className="rounded-xl bg-sidebar-accent/30 p-4">
+          <div className="rounded-xl bg-sidebar-accent/30 p-4 space-y-3">
             <p className="text-xs font-medium text-sidebar-foreground/70">
-              Sistema de Gestión
+              {user?.nombre}
             </p>
             <p className="mt-0.5 text-[11px] text-sidebar-foreground/40">
-              Versión 1.0.0
+              {user?.rol}
             </p>
+            <Button variant="outline" size="sm" className="w-full justify-start" onClick={handleLogout}>
+              <LogOut className="h-4 w-4" /> Salir
+            </Button>
           </div>
         </div>
       </div>

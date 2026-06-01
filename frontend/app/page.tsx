@@ -1,5 +1,17 @@
-import { redirect } from "next/navigation"
+"use client"
+
+import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { defaultPathForRole, useAuth } from "@/lib/auth"
 
 export default function Home() {
-  redirect("/productos")
+  const { user, loading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (loading) return
+    router.replace(user ? defaultPathForRole(user.rol) : "/login")
+  }, [loading, router, user])
+
+  return <p className="p-6">Cargando...</p>
 }

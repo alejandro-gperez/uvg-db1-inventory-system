@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { apiFetch } from "@/lib/api"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DollarSign,
@@ -56,10 +57,10 @@ export default function ReportesPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:8080/reportes/ventas").then(r => r.json()),
-      fetch("http://localhost:8080/reportes/top-productos").then(r => r.json()),
-      fetch("http://localhost:8080/reportes/cte").then(r => r.json()),
-      fetch("http://localhost:8080/ventas-view").then(r => r.json()),
+      apiFetch("/reportes/ventas").then(r => r.json()),
+      apiFetch("/reportes/top-productos").then(r => r.json()),
+      apiFetch("/reportes/cte").then(r => r.json()),
+      apiFetch("/ventas-view").then(r => r.json()),
     ])
       .then(([ventasData, topData, cte, view]) => {
         setVentas(Array.isArray(ventasData) ? ventasData : [])
@@ -137,6 +138,7 @@ export default function ReportesPage() {
     <DashboardLayout
       title="Reportes"
       description="Visualiza el rendimiento de tu negocio"
+      allowedRoles={["administrador", "gerente"]}
     >
       <div className="space-y-8">
         {/* Stats */}

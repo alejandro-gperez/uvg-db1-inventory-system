@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Plus, Users } from "lucide-react"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { apiFetch } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -49,7 +50,7 @@ export default function ClientesPage() {
   })
 
   useEffect(() => {
-    fetch("http://localhost:8080/clientes")
+    apiFetch("/clientes")
       .then(res => res.json())
       .then(data => {
         setClientes(data)
@@ -71,7 +72,7 @@ export default function ClientesPage() {
     if (!newCliente.nombre || !newCliente.correo) return
 
     try {
-      const res = await fetch("http://localhost:8080/clientes", {
+      const res = await apiFetch("/clientes", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +98,7 @@ export default function ClientesPage() {
   if (loading) return <p className="p-6">Cargando clientes...</p>
 
   return (
-    <DashboardLayout title="Clientes" description="Administra clientes">
+    <DashboardLayout title="Clientes" description="Administra clientes" allowedRoles={["administrador", "empleado"]}>
       <div className="space-y-8">
 
         <div className="flex justify-between gap-4">
