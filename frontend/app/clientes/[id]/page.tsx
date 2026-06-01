@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { apiFetch } from "@/lib/api"
+import { ProtectedPage } from "@/lib/auth"
 
 export default function ClienteDetalle() {
   const { id } = useParams()
   const [cliente, setCliente] = useState<any>(null)
 
   useEffect(() => {
-    fetch(`http://localhost:8080/clientes`)
+    apiFetch("/clientes")
       .then(res => res.json())
       .then(data => {
         const found = data.find((c:any) => c.id == id)
@@ -19,9 +21,11 @@ export default function ClienteDetalle() {
   if (!cliente) return <p>Cargando...</p>
 
   return (
-    <div className="p-6">
-      <h1>{cliente.nombre}</h1>
-      <p>{cliente.correo}</p>
-    </div>
+    <ProtectedPage allowedRoles={["administrador", "empleado"]}>
+      <div className="p-6">
+        <h1>{cliente.nombre}</h1>
+        <p>{cliente.correo}</p>
+      </div>
+    </ProtectedPage>
   )
 }

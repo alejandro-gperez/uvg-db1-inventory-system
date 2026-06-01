@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { apiFetch } from "@/lib/api"
+import { ProtectedPage } from "@/lib/auth"
 
 type Producto = {
   id: number
@@ -18,7 +20,7 @@ export default function ProductoDetalle() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch("http://localhost:8080/productos")
+    apiFetch("/productos")
       .then(res => res.json())
       .then(data => {
         const found = data.find((p: Producto) => p.id == Number(id))
@@ -36,28 +38,30 @@ export default function ProductoDetalle() {
   if (!producto) return <p className="p-6">Producto no encontrado</p>
 
   return (
-    <div className="p-8 space-y-4">
-      <h1 className="text-2xl font-bold">{producto.nombre}</h1>
+    <ProtectedPage allowedRoles={["administrador", "bodeguero"]}>
+      <div className="p-8 space-y-4">
+        <h1 className="text-2xl font-bold">{producto.nombre}</h1>
 
-      <p className="text-muted-foreground">
-        ID: {producto.id}
-      </p>
+        <p className="text-muted-foreground">
+          ID: {producto.id}
+        </p>
 
-      <p className="text-lg">
-        Precio: <span className="font-semibold">${producto.precio.toFixed(2)}</span>
-      </p>
+        <p className="text-lg">
+          Precio: <span className="font-semibold">${producto.precio.toFixed(2)}</span>
+        </p>
 
-      <p className="text-sm text-muted-foreground">
-        Categoría ID: {producto.id_categoria}
-      </p>
+        <p className="text-sm text-muted-foreground">
+          Categoría ID: {producto.id_categoria}
+        </p>
 
-      <p className="text-sm text-muted-foreground">
-        Proveedor ID: {producto.id_proveedor}
-      </p>
+        <p className="text-sm text-muted-foreground">
+          Proveedor ID: {producto.id_proveedor}
+        </p>
 
-      <p className="text-sm text-muted-foreground">
-        Marca ID: {producto.id_marca}
-      </p>
-    </div>
+        <p className="text-sm text-muted-foreground">
+          Marca ID: {producto.id_marca}
+        </p>
+      </div>
+    </ProtectedPage>
   )
 }

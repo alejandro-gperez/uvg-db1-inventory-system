@@ -47,6 +47,7 @@ export default function AboutPage() {
     <DashboardLayout
       title="About"
       description="Información sobre el sistema de gestión"
+      allowedRoles={["administrador"]}
     >
       <div className="space-y-10">
         {/* Hero Card */}
