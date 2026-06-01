@@ -62,10 +62,10 @@ export default function ReportesPage() {
       fetch("http://localhost:8080/ventas-view").then(r => r.json()),
     ])
       .then(([ventasData, topData, cte, view]) => {
-        setVentas(ventasData)
-        setTopProductos(topData)
-        setCteData(cte)
-        setVentasView(view)
+        setVentas(Array.isArray(ventasData) ? ventasData : [])
+        setTopProductos(Array.isArray(topData) ? topData : [])
+        setCteData(Array.isArray(cte) ? cte : [])
+        setVentasView(Array.isArray(view) ? view : [])
         setLoading(false)
       })
       .catch(err => {
@@ -77,7 +77,10 @@ export default function ReportesPage() {
   if (loading) return <p className="p-6">Cargando reportes...</p>
 
   // ===== METRICS =====
-  const totalVentas = ventas.reduce((sum, v) => sum + (v.total || 0), 0)
+  const totalVentas = (ventas || []).reduce(
+    (sum, v) => sum + (v.total || 0),
+    0
+  )
   const promedioVenta = ventas.length > 0 ? totalVentas / ventas.length : 0
 
   // ===== CHART DATA =====
