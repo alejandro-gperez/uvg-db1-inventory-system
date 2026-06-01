@@ -10,11 +10,16 @@
 1.  **Environment Configuration**
     Create a `.env` file based on `.env.example`. Per project requirements, use the following credentials for evaluation:
     ```env
-    DB_USER=proy2
-    DB_PASSWORD=secret
-    DB_NAME=storehub
-    DB_HOST=localhost
+    POSTGRES_USER=proy3
+    POSTGRES_PASSWORD=secret
+    POSTGRES_DB=tienda
+
+    DB_HOST=db
     DB_PORT=5432
+    DB_USER=proy3
+    DB_PASSWORD=secret
+    DB_NAME=tienda
+    DB_SSLMODE=disable
     ```
 
 2.  **Launch Database (Docker)**
@@ -28,7 +33,7 @@
 3.  **Run Backend**
     ```bash
     cd backend
-    go run main.go
+    DB_HOST=localhost DB_PORT=5433 DB_USER=proy3 DB_PASSWORD=secret DB_NAME=tienda DB_SSLMODE=disable go run main.go
     ```
 
 4.  **Run Frontend**
