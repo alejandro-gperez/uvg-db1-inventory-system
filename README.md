@@ -1,141 +1,441 @@
-# StoreHub - Proyecto 3
+# StoreHub - Project 3
 
-Sistema full-stack para gestión de tienda con PostgreSQL, Go, GORM, Next.js y Docker. El Proyecto 3 incorpora ORM, roles de base de datos, permisos por mínimo privilegio, stored procedures, autenticación con sesiones y protección por rol en backend y frontend.
+### Inventory, Sales, Security and Database Management Platform
 
-# Cómo iniciar el proyecto
+**Course:** CC3088 Bases de Datos 1
+**Institution:** Universidad del Valle de Guatemala
+**Student:** Alejandro Pérez
 
-1. Crear el archivo `.env` desde `.env.example`.
-2. Verificar las credenciales requeridas:
+---
+
+# Overview
+
+StoreHub is a full-stack inventory and sales management platform developed for the **CC3088 Database Systems course**.
+
+The application demonstrates advanced database concepts including:
+
+* Relational schema design
+* Role-based access control (RBAC)
+* PostgreSQL roles and permissions
+* Stored Procedures
+* Transactions and rollback mechanisms
+* ORM integration using GORM
+* Session-based authentication
+* Backend and frontend authorization
+* SQL views and reporting
+* Dockerized deployment
+
+The system manages:
+
+* Products
+* Inventory
+* Clients
+* Sales
+* Reports
+* Auditing
+
+while enforcing security and minimum-privilege principles.
+
+---
+
+# Technology Stack
+
+| Layer          | Technology                                         |
+| -------------- | -------------------------------------------------- |
+| Database       | PostgreSQL                                         |
+| Backend        | Go, net/http, GORM                                 |
+| Frontend       | Next.js, React, Tailwind CSS                       |
+| Authentication | Session-based authentication with HttpOnly cookies |
+| Deployment     | Docker & Docker Compose                            |
+
+---
+
+# Features
+
+## Database & Security
+
+* PostgreSQL relational schema
+* Database roles with CREATE ROLE
+* Principle of least privilege
+* Role-specific permissions
+* SQL views for reporting and auditing
+* Stored procedures invoked from backend
+* Explicit transaction handling
+* Rollback support
+* Session persistence
+* Authentication and authorization
+
+## Backend
+
+* REST API
+* GORM ORM integration
+* Session middleware
+* Role middleware
+* CRUD operations
+* Report generation
+* Stored procedure execution
+
+## Frontend
+
+* Dashboard interface
+* Inventory management
+* Client management
+* Sales workflow
+* Reports and analytics
+* Audit views
+* Login and logout
+* Role-aware navigation
+* Route protection
+
+---
+
+# Setup Instructions
+
+## Prerequisites
+
+* Docker
+* Docker Desktop
+* Go 1.21+
+* Node.js
+* pnpm
+
+---
+
+## Environment Configuration
+
+Create a `.env` file based on `.env.example`.
 
 ```env
 POSTGRES_USER=proy3
 POSTGRES_PASSWORD=secret
 POSTGRES_DB=tienda
+
 DB_USER=proy3
 DB_PASSWORD=secret
 DB_NAME=tienda
 DB_SSLMODE=disable
+
 NEXT_PUBLIC_API_URL=http://localhost:8080
 CORS_ALLOWED_ORIGIN=http://localhost:3000
 ```
 
-3. Levantar todos los servicios:
+---
+
+## Start the Application
 
 ```bash
-docker compose up
+docker compose up --build
 ```
 
-Servicios:
+---
 
-| Servicio | URL |
-| --- | --- |
-| Frontend | http://localhost:3000 |
-| Backend | http://localhost:8080 |
-| PostgreSQL | localhost:5432 |
+## Services
 
-# Usuarios de Prueba
+| Service    | URL                   |
+| ---------- | --------------------- |
+| Frontend   | http://localhost:3000 |
+| Backend    | http://localhost:8080 |
+| PostgreSQL | localhost:5433        |
 
-Usuarios de aplicación para login web:
+---
 
-| Usuario | Contraseña | Rol |
-| --- | --- | --- |
-| admin | secret | administrador |
-| gerente | secret | gerente |
-| empleado | secret | empleado |
-| bodeguero | secret | bodeguero |
-| auditor | secret | auditor_externo |
+# Application Users
 
-Usuarios PostgreSQL para demostrar permisos de base de datos:
+All application users use the password:
 
-| Usuario PostgreSQL | Contraseña | Rol PostgreSQL |
-| --- | --- | --- |
-| admin_test | secret | administrador |
-| gerente_test | secret | gerente |
-| empleado_test | secret | empleado |
-| bodeguero_test | secret | bodeguero |
-| auditor_test | secret | auditor_externo |
+```text
+secret
+```
 
-# Esquema de Roles y Permisos
+| Username  | Password | Role            |
+| --------- | -------- | --------------- |
+| admin     | secret   | administrador   |
+| gerente   | secret   | gerente         |
+| empleado  | secret   | empleado        |
+| bodeguero | secret   | bodeguero       |
+| auditor   | secret   | auditor_externo |
 
-| Rol | Responsabilidad | Tablas accesibles | Vistas accesibles | Permisos permitidos | Stored procedures permitidos |
-| --- | --- | --- | --- | --- | --- |
-| administrador | Administración completa del sistema | Todas las tablas | Todas las vistas | SELECT, INSERT, UPDATE, DELETE, EXECUTE | Todos |
-| gerente | Consulta de métricas y reportes | Sin acceso directo operativo amplio | vista_ventas, vw_reporte_ventas, vw_top_productos, vw_stock_bajo | SELECT sobre vistas, EXECUTE limitado | sp_resumen_ventas_periodo |
-| empleado | Gestión operativa de ventas y clientes | Cliente, Venta, Detalle_Venta, Metodo_Pago, Producto, Inventario, Movimiento_Inventario | vista_ventas, vw_catalogo_productos | SELECT/INSERT/UPDATE necesarios para ventas y clientes; sin administración de usuarios | sp_registrar_venta |
-| bodeguero | Gestión de productos e inventario | Producto, Inventario, Movimiento_Inventario, Categoria, Marca, Proveedor | vw_catalogo_productos, vw_stock_bajo, vw_auditoria_inventario | SELECT/INSERT/UPDATE necesarios para inventario; sin ventas ni usuarios | sp_ajustar_inventario, sp_ingresar_inventario |
-| auditor_externo | Auditoría de solo lectura | Ninguna tabla operativa directa | vw_auditoria_ventas, vw_auditoria_inventario, vw_auditoria_productos | Solo SELECT sobre vistas de auditoría | Ninguno |
+---
 
-El acceso del auditor externo se revoca o expira desactivando el usuario de aplicación, asignando `expires_at`, revocando sesiones en `sesion_aplicacion` o ejecutando `REVOKE auditor_externo FROM auditor_test` en PostgreSQL.
+# PostgreSQL Users
 
-# Stored Procedures implementados
+These users exist exclusively to demonstrate PostgreSQL permissions and role inheritance.
 
-| Procedure | Propósito | Característica evaluable |
-| --- | --- | --- |
-| sp_registrar_venta | Registra venta, detalle y descuenta inventario | Transacción explícita y rollback |
-| sp_cancelar_venta | Cancela venta y repone inventario | Manejo de excepciones |
-| sp_ajustar_inventario | Aplica ajuste positivo o negativo de stock | IN/OUT con stock resultante |
-| sp_ingresar_inventario | Registra ingreso de unidades a inventario | IN/OUT con stock resultante |
-| sp_resumen_ventas_periodo | Resume ventas por rango de fechas | Reporte de negocio invocable desde backend |
+| PostgreSQL User | Password | Role            |
+| --------------- | -------- | --------------- |
+| admin_test      | secret   | administrador   |
+| gerente_test    | secret   | gerente         |
+| empleado_test   | secret   | empleado        |
+| bodeguero_test  | secret   | bodeguero       |
+| auditor_test    | secret   | auditor_externo |
 
-El backend invoca los procedimientos con SQL explícito desde handlers donde corresponde, manteniendo GORM para CRUD simple.
+---
 
-# Arquitectura de autenticación
+# Role and Permission Model
 
-La autenticación usa sesiones tradicionales con cookie `HttpOnly`.
+| Role            | Responsibility              |
+| --------------- | --------------------------- |
+| administrador   | Full system administration  |
+| gerente         | Reports and analytics       |
+| empleado        | Sales and client operations |
+| bodeguero       | Products and inventory      |
+| auditor_externo | Read-only auditing          |
 
-| Componente | Responsabilidad |
-| --- | --- |
-| usuario_aplicacion | Usuarios que inician sesión en la aplicación |
-| sesion_aplicacion | Tokens de sesión hasheados, expiración y revocación |
-| POST /auth/login | Valida credenciales, crea sesión y envía cookie |
-| POST /auth/logout | Revoca sesión y limpia cookie |
-| GET /auth/me | Devuelve el usuario autenticado actual |
-| RequireAuth | Rechaza peticiones sin sesión válida |
-| RequireRole | Autoriza endpoints según rol |
-| AuthProvider | Mantiene sesión en frontend consultando `/auth/me` |
-| ProtectedPage | Protege páginas y redirige según rol |
+---
 
-El backend es la fuente real de autorización. El filtrado del sidebar solo mejora la experiencia visual.
+## Detailed Permissions
 
-# Cómo probar cada rol
+| Role            | Accessible Objects                         |
+| --------------- | ------------------------------------------ |
+| administrador   | All tables, views and procedures           |
+| gerente         | Reporting views and reporting procedures   |
+| empleado        | Sales, clients, products, payment methods  |
+| bodeguero       | Products, inventory, suppliers, categories |
+| auditor_externo | Audit views only                           |
 
-1. Entrar a http://localhost:3000/login.
-2. Iniciar sesión con `admin / secret` y verificar acceso a productos, inventario, ventas, clientes, reportes y auditoría.
-3. Iniciar sesión con `gerente / secret` y verificar acceso solo a reportes.
-4. Iniciar sesión con `empleado / secret` y verificar acceso a ventas y clientes.
-5. Iniciar sesión con `bodeguero / secret` y verificar acceso a productos e inventario.
-6. Iniciar sesión con `auditor / secret` y verificar acceso únicamente a auditoría.
-7. Intentar abrir manualmente una ruta no permitida para cada rol y verificar redirección o error 403 desde backend.
-8. Presionar Salir y verificar que `/auth/me` responda no autenticado.
+---
 
-# Endpoints principales
+# Stored Procedures
 
-| Área | Endpoints |
-| --- | --- |
-| Auth | POST /auth/login, POST /auth/logout, GET /auth/me |
-| Productos | GET/POST /productos, PUT/DELETE /productos/:id |
-| Clientes | GET/POST /clientes, PUT/DELETE /clientes/:id |
-| Ventas | GET/POST /ventas, GET /ventas/:id, POST /ventas/:id/cancelar |
-| Inventario | POST /inventario/ingreso, POST /inventario/ajuste |
-| Reportes | /reportes/ventas, /reportes/top-productos, /reportes/cte, /reportes/productos-vendidos, /reportes/ventas-altas, /reportes/resumen |
-| Auditoría | /auditoria/ventas, /auditoria/inventario, /auditoria/productos |
+| Procedure                 | Purpose                            |
+| ------------------------- | ---------------------------------- |
+| sp_registrar_venta        | Register sale and update inventory |
+| sp_cancelar_venta         | Cancel sale and restore inventory  |
+| sp_ajustar_inventario     | Manual stock adjustment            |
+| sp_ingresar_inventario    | Inventory intake                   |
+| sp_resumen_ventas_periodo | Sales summary reporting            |
 
-# Stack tecnológico
+---
 
-| Capa | Tecnología |
-| --- | --- |
-| Base de datos | PostgreSQL |
-| Backend | Go, net/http, GORM |
-| Frontend | Next.js, React, Tailwind CSS |
-| Despliegue | Docker Compose |
+# Authentication Architecture
 
-# Estructura del proyecto
+Authentication uses:
+
+* HttpOnly session cookies
+* Session tokens stored hashed
+* Session expiration
+* Session revocation
+* Backend authorization middleware
+
+Database tables:
+
+```text
+usuario_aplicacion
+sesion_aplicacion
+```
+
+Authentication endpoints:
+
+```http
+POST /auth/login
+POST /auth/logout
+GET  /auth/me
+```
+
+Middleware:
+
+```text
+RequireAuth
+RequireRole
+```
+
+---
+
+# API Endpoints
+
+## Authentication
+
+```http
+POST /auth/login
+POST /auth/logout
+GET  /auth/me
+```
+
+---
+
+## Products
+
+```http
+GET    /productos
+POST   /productos
+PUT    /productos/:id
+DELETE /productos/:id
+```
+
+---
+
+## Clients
+
+```http
+GET    /clientes
+POST   /clientes
+PUT    /clientes/:id
+DELETE /clientes/:id
+```
+
+---
+
+## Sales
+
+```http
+GET  /ventas
+POST /ventas
+GET  /ventas/:id
+POST /ventas/:id/cancelar
+```
+
+---
+
+## Inventory
+
+```http
+POST /inventario/ingreso
+POST /inventario/ajuste
+```
+
+---
+
+## Reports
+
+```http
+GET /reportes/ventas
+GET /reportes/top-productos
+GET /reportes/cte
+GET /reportes/productos-vendidos
+GET /reportes/ventas-altas
+GET /reportes/resumen
+```
+
+---
+
+## Auditing
+
+```http
+GET /auditoria/ventas
+GET /auditoria/inventario
+GET /auditoria/productos
+```
+
+---
+
+# Role Validation Guide
+
+### Administrator
+
+Can access:
+
+* Products
+* Inventory
+* Clients
+* Sales
+* Reports
+* Auditing
+
+---
+
+### Manager
+
+Can access:
+
+* Reports only
+
+---
+
+### Employee
+
+Can access:
+
+* Sales
+* Clients
+
+---
+
+### Warehouse Manager
+
+Can access:
+
+* Products
+* Inventory
+
+---
+
+### External Auditor
+
+Can access:
+
+* Auditing only
+
+---
+
+# Project Structure
 
 ```text
 proyecto_2/
-├── backend/          # API Go, GORM, auth y handlers
-├── frontend/         # Aplicación Next.js
-├── db/               # Schema, roles, vistas, stored procedures y seed
+├── backend/
+│   ├── auth/
+│   ├── handlers/
+│   ├── models/
+│   └── main.go
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   └── lib/
+│
+├── db/
+│   ├── schema.sql
+│   └── seed.sql
+│
 ├── docker-compose.yml
 └── README.md
 ```
+
+---
+
+# Database Design
+
+![DDL Diagram](images/ddl.png)
+
+---
+
+# Application Preview
+
+![Main Page](images/mainpage.png)
+
+---
+
+# Validation Checklist
+
+After running:
+
+```bash
+docker compose up --build
+```
+
+verify:
+
+* Login works
+* Logout works
+* Sessions persist
+* Role restrictions work
+* Reports load correctly
+* Stored procedures execute correctly
+* Auditor cannot access operational tables
+* PostgreSQL role permissions are enforced
+
+---
+
+# Academic Notes
+
+This project was developed as part of **CC3088 Bases de Datos 1** and demonstrates the integration of:
+
+* SQL DDL
+* SQL DML
+* Views
+* Stored Procedures
+* Transactions
+* ORM usage
+* Authentication
+* Authorization
+* Docker deployment
+* Full-stack application development
