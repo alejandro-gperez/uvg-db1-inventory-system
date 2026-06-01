@@ -34,6 +34,34 @@ CREATE TABLE Empleado (
     nombre VARCHAR(100) NOT NULL
 );
 
+CREATE TABLE Usuario_Aplicacion (
+    id_usuario SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    nombre VARCHAR(100) NOT NULL,
+    rol VARCHAR(50) NOT NULL CHECK (rol IN (
+        'administrador',
+        'gerente',
+        'empleado',
+        'bodeguero',
+        'auditor_externo'
+    )),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    expires_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Sesion_Aplicacion (
+    id_sesion SERIAL PRIMARY KEY,
+    id_usuario INT NOT NULL,
+    token_hash TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    revoked_at TIMESTAMP,
+
+    FOREIGN KEY (id_usuario) REFERENCES Usuario_Aplicacion(id_usuario)
+);
+
 -- =====================
 -- PRODUCTO
 -- =====================
